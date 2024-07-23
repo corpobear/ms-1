@@ -1,0 +1,47 @@
+name: Trigger auto deployment for ms-1
+
+# When this action will be executed
+on:
+  # Automatically trigger it when detected changes in repo
+  push:
+    branches: 
+      [ master ]
+    paths:
+    - '"./dockerfile.cloud"/**'
+    - '.github/workflows/ms-1-AutoDeployTrigger-42838f2c-6aea-46b6-8698-a0773c33be66.yml'
+
+  # Allow manual trigger 
+  workflow_dispatch:      
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions: 
+      id-token: write #This is required for requesting the OIDC JWT Token
+      contents: read #Required when GH token is used to authenticate with private repo
+
+    steps:
+      - name: Checkout to the branch
+        uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.MS1_AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.MS1_AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.MS1_AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push container image to registry
+        uses: azure/container-apps-deploy-action@v2
+        with:
+          appSourcePath: ${{ github.workspace }}"./dockerfile.cloud" 
+          registryUrl: microservicewebapp.azurecr.io
+          registryUsername: ${{ secrets.MS1_REGISTRY_USERNAME }}
+          registryPassword: ${{ secrets.MS1_REGISTRY_PASSWORD }}
+          containerAppName: ms-1
+          resourceGroup: microservice-web-app
+          imageToBuild: microservicewebapp.azurecr.io/ms-1:${{ github.sha }}
+          _buildArgumentsKey_: |
+            _buildArgumentsValues_
+
+
